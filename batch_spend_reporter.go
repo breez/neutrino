@@ -103,7 +103,6 @@ func (b *batchSpendReporter) ProcessBlock(blk *wire.MsgBlock,
 	// If any requests want the UTXOs at this height, scan the block to find
 	// the original outputs that might be spent from.
 	if len(newReqs) > 0 {
-		b.addNewRequests(newReqs)
 		b.findInitialTransactions(blk, newReqs, height)
 	}
 

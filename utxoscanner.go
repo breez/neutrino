@@ -312,6 +312,7 @@ scanToEnd:
 		// If there are any new requests that can safely be added to this batch,
 		// then try and fetch them.
 		newReqs := s.dequeueAtHeight(height)
+		reporter.addNewRequests(newReqs)
 
 		// If an outpoint is created in this block, then fetch it regardless.
 		// Otherwise check to see if the filter matches any of our watched
