@@ -64,6 +64,10 @@ var (
 	// fails.
 	ErrFilterFetchFailed = fmt.Errorf("unable to fetch cfilter")
 
+	// MaxCFilterBatchSize specified the max number of compact filters
+	// requested in a single batch.
+	MaxCFilterBatchSize = int64(100)
+
 	// noProgress will be used to indicate to a query.WorkManager that a
 	// response makes no progress towards the completion of the query.
 	noProgress = query.Progress{
@@ -584,7 +588,7 @@ func (s *ChainService) prepareCFiltersQuery(blockHash chainhash.Hash,
 	// wire.MaxGetCFiltersReqRange, in anticipation of calls for the
 	// following or preceding filters.
 	var startHeight, stopHeight int64
-	batchSize := int64(wire.MaxGetCFiltersReqRange)
+	batchSize := MaxCFilterBatchSize
 
 	// If the query specifies a maximum batch size, we will limit the number
 	// of requested filters accordingly.
