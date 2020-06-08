@@ -1630,6 +1630,11 @@ func (s *ChainService) Start() error {
 	return nil
 }
 
+// IsStarted returns true if Start() was called at least once
+func (s *ChainService) IsStarted() bool {
+	return s.started > 0
+}
+
 // Stop gracefully shuts down the server by stopping and disconnecting all
 // peers and the main listener.
 func (s *ChainService) Stop() error {
