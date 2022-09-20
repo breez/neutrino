@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync"
@@ -570,6 +571,10 @@ type Config struct {
 	// and be maintained as persistent peers.
 	AddPeers []string
 
+	// RestPeers is a slice of host that should be connected to on startup,
+	// and be maintained as persistent peers that support the Rest API
+	RestPeers []string
+
 	// Dialer is an optional function closure that will be used to
 	// establish outbound TCP connections. If specified, then the
 	// connection manager will use this in place of net.Dial for all
@@ -670,6 +675,9 @@ type ChainService struct { // nolint:maligned
 	// peerSubscribers is a slice of active peer subscriptions, that we
 	// will notify each time a new peer is connected.
 	peerSubscribers []*peerSubscription
+
+	// restPeers is a slice of peers that suppoorts the rest API
+	restPeers []string
 
 	// TODO: Add a map for more granular exclusion?
 	mtxCFilter sync.Mutex
@@ -947,6 +955,22 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	permanentPeers := cfg.ConnectPeers
 	if len(permanentPeers) == 0 {
 		permanentPeers = cfg.AddPeers
+	}
+
+	// Adding rest peers to chainservice if spesified in config
+	restPeers := cfg.RestPeers
+	if len(restPeers) != 0 {
+		for _, restAddr := range restPeers {
+
+			_, err = http.Get(restAddr)
+			if err != nil {
+				log.Warnf("unable to lookup address for "+
+					"%v: %v", restAddr, err)
+			} else {
+				s.restPeers = append(s.restPeers, restAddr)
+			}
+		}
+
 	}
 
 	for _, addr := range permanentPeers {
