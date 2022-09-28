@@ -31,7 +31,6 @@ import (
 	"github.com/lightninglabs/neutrino/headerfs"
 	"github.com/lightninglabs/neutrino/pushtx"
 	"github.com/lightninglabs/neutrino/query"
-	"golang.org/x/net/proxy"
 )
 
 // These are exported variables so they can be changed by users.
@@ -978,13 +977,13 @@ func NewChainService(cfg Config) (*ChainService, error) {
 
 		s.client, err = NewHTTPClient(cfg.TorProxy)
 		if err != nil {
-			fmt.Errorf("error setting up HTTPClient: %w", err)
+			log.Debugf("error setting up HTTPClient: %w", err)
 		}
 		for _, restAddr := range restPeers {
 
 			u, err := url.Parse(restAddr)
 			if err != nil {
-				fmt.Errorf("error: %w", err)
+				log.Debugf("error: %w", err)
 			}
 
 			_, err = s.nameResolver(u.Host)
@@ -994,7 +993,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 			}
 			res, err := s.client.Get(restAddr)
 			if err != nil {
-				fmt.Errorf("unable to lookup address for "+
+				log.Warnf("unable to lookup address for "+
 					"%v: %v", restAddr, err)
 				break
 			}
@@ -1003,7 +1002,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 			if res.StatusCode == 200 {
 				s.restPeers = append(s.restPeers, restAddr)
 			} else {
-				fmt.Errorf("error: %v", err)
+				log.Warnf("error connecting to host: %v", err)
 			}
 		}
 	}
@@ -1050,18 +1049,16 @@ func NewChainService(cfg Config) (*ChainService, error) {
 
 func NewHTTPClient(tor bool) (*HTTPClient, error) {
 	if tor {
-		proxyURL, err := url.Parse("socks5://127.0.0.1:9050")
-		if err != nil {
-			return nil, fmt.Errorf("unable to parse URL:%w", err)
-		}
-		torDialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+		proxyAddress := fmt.Sprintf("socks5://127.0.0.1:%v", "9050")
+		proxyUrl, err := url.Parse(proxyAddress)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup Tor proxy:%w", err)
 		}
-
-		return &HTTPClient{&http.Client{
-			Transport: &http.Transport{Dial: torDialer.Dial},
-			Timeout:   time.Second * 5}}, nil
+		return &HTTPClient{client: &http.Client{Transport: &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+			Dial: (&net.Dialer{
+				Timeout: 30 * time.Second,
+			}).Dial}}}, nil
 	}
 	return &HTTPClient{&http.Client{Timeout: 10 * time.Second}}, nil
 }
