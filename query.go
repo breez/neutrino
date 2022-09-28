@@ -62,7 +62,7 @@ var (
 	QueryEncoding = wire.WitnessEncoding
 
 	// RestHostIndex specifies the current host to query using if the
-	// rest API is enabled
+	// rest API is enabled.
 	RestHostIndex = 0
 
 	// ErrFilterFetchFailed is returned in case fetching a compact filter
@@ -846,7 +846,7 @@ func (s *ChainService) handleCFiltersResponse(q *cfiltersQuery,
 // API.
 func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, q *cfiltersQuery) (*wire.MsgCFilter, error) {
 	// Getting the basic blockfilter with the blockhash
-	res, err := s.client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[0], h.String()))
+	res, err := s.client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[hostIndex], h.String()))
 
 	if err != nil {
 		return nil, fmt.Errorf("client: %w", err)
@@ -859,10 +859,13 @@ func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, q *cfilte
 
 	}
 
-	//Creating message and deserialising the results
+	// Creating message and deserialising the results.
 	filter := &wire.MsgCFilter{}
 	reader := bytes.NewBuffer(bodyBytes)
-	filter.Deserialize(reader)
+	err = filter.Deserialize(reader)
+	if err != nil{
+		return nil, fmt.Errorf("error deserialising object:%w", err)
+	}
 	return filter, nil
 }
 
