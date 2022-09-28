@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
 	"sync"
 	"time"
 
@@ -63,7 +62,7 @@ var (
 	QueryEncoding = wire.WitnessEncoding
 
 	// RestHostIndex specifies the current host to query using if the
-	// rest API is enabled.
+	// rest API is enabled
 	RestHostIndex = 0
 
 	// ErrFilterFetchFailed is returned in case fetching a compact filter
@@ -141,9 +140,6 @@ const (
 	// reverseBatch is used to indicate we should also query for items
 	// preceding, as they most likely will be fetched next.
 	reverseBatch
-
-	// basic blockfilter url for querying using the rest API.
-	basicBlockFilterURL string = "rest/blockfilter/basic"
 )
 
 // QueryOption is a functional option argument to any of the network query
@@ -848,41 +844,25 @@ func (s *ChainService) handleCFiltersResponse(q *cfiltersQuery,
 
 // getCfilterRest gets a cFilter from its peers. Given that, it supports the rest
 // API.
-func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int) (*wire.MsgCFilter, error) {
-
-	var filter = &wire.MsgCFilter{}
-	var numHosts = len(s.restPeers)
-
+func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, q *cfiltersQuery) (*wire.MsgCFilter, error) {
 	// Getting the basic blockfilter with the blockhash
-	URL := fmt.Sprintf("%v/%v/%v.bin", s.restPeers[hostIndex], basicBlockFilterURL, h.String())
-	res, err := http.Get(URL)
+	res, err := s.client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[0], h.String()))
 
-	// Attempt to query another host if avalible
 	if err != nil {
-		if RestHostIndex < numHosts {
-			RestHostIndex++
-			filter,err = s.getCFilterRest(h, RestHostIndex)
-			if err != nil {
-				return nil, fmt.Errorf("client: %w", err)
-			}
-		} else {
-			return nil, fmt.Errorf("client: %w", err)
-		}
+		return nil, fmt.Errorf("client: %w", err)
 	}
+	defer res.Body.Close()
 
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("http.Get(%v) error: %w", URL, err)
+		return nil, fmt.Errorf("http.Get(%v) error: %w", res, err)
 
 	}
 
 	//Creating message and deserialising the results
-	
+	filter := &wire.MsgCFilter{}
 	reader := bytes.NewBuffer(bodyBytes)
-	err = filter.Deserialize(reader)
-	if err != nil{
-		return nil, fmt.Errorf("failed to deserialize object. Err:%v",err)
-	}
+	filter.Deserialize(reader)
 	return filter, nil
 }
 
@@ -969,12 +949,13 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 				// Fetch blockheaders from persistent storage
 				blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(j))
 				if err != nil {
-					fmt.Errorf("unable to get header for start block=%v: %v", blockHash, err)
+					fmt.Errorf("unable to get header for start "+
+						"block=%v: %v", blockHash, err)
 					return
 				}
 				hash := blockHeaders.BlockHash()
 
-				filter, err := s.getCFilterRest(hash, RestHostIndex)
+				filter, err := s.getCFilterRest(hash, RestHostIndex, query)
 				if err != nil {
 					fmt.Errorf("error: %w", err)
 					return
