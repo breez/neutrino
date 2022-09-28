@@ -974,13 +974,13 @@ func NewChainService(cfg Config) (*ChainService, error) {
 
 	restPeers := cfg.RestPeers
 	if len(restPeers) != 0 {
-
 		s.client, err = NewHTTPClient(cfg.TorProxy)
 		if err != nil {
 			log.Debugf("error setting up HTTPClient: %w", err)
 		}
+		// Iterating thought restpeer defined in the config
+		// and checking if they are reachable.
 		for _, restAddr := range restPeers {
-
 			u, err := url.Parse(restAddr)
 			if err != nil {
 				log.Debugf("error: %w", err)
@@ -1047,24 +1047,27 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	return &s, nil
 }
 
+// NewHTTPClient of type HTTPClient.
 func NewHTTPClient(tor bool) (*HTTPClient, error) {
+	// We'll first check if the peer wishes to query use a tor proxy.
 	if tor {
 		proxyAddress := fmt.Sprintf("socks5://127.0.0.1:%v", "9050")
-		proxyUrl, err := url.Parse(proxyAddress)
+		proxyURL, err := url.Parse(proxyAddress)
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup Tor proxy:%w", err)
 		}
 		return &HTTPClient{client: &http.Client{Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyUrl),
+			Proxy: http.ProxyURL(proxyURL),
 			Dial: (&net.Dialer{
 				Timeout: 30 * time.Second,
 			}).Dial}}}, nil
 	}
+	// We'll retun a reguar HTTP client.
 	return &HTTPClient{&http.Client{Timeout: 10 * time.Second}}, nil
 }
 
+// Function queries the HTTPClient and with the requested url.
 func (c HTTPClient) Get(url string) (*http.Response, error) {
-
 	return c.client.Get(url)
 }
 
