@@ -844,7 +844,7 @@ func (s *ChainService) handleCFiltersResponse(q *cfiltersQuery,
 
 // getCfilterRest gets a cFilter from its peers. Given that, it supports the rest
 // API.
-func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, q *cfiltersQuery) (*wire.MsgCFilter, error) {
+func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int) (*wire.MsgCFilter, error) {
 	// Getting the basic blockfilter with the blockhash
 	res, err := s.client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[hostIndex], h.String()))
 
@@ -856,7 +856,6 @@ func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, q *cfilte
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("http.Get(%v) error: %w", res, err)
-
 	}
 
 	// Creating message and deserialising the results.
@@ -958,7 +957,7 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 				}
 				hash := blockHeaders.BlockHash()
 
-				filter, err := s.getCFilterRest(hash, RestHostIndex, query)
+				filter, err := s.getCFilterRest(hash, RestHostIndex)
 				if err != nil {
 					fmt.Errorf("error: %w", err)
 					return
