@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ import (
 	"github.com/lightninglabs/neutrino/headerfs"
 	"github.com/lightninglabs/neutrino/pushtx"
 	"github.com/lightninglabs/neutrino/query"
+	"golang.org/x/net/proxy"
 )
 
 // These are exported variables so they can be changed by users.
@@ -575,6 +577,10 @@ type Config struct {
 	// and be maintained as persistent peers that support the Rest API
 	RestPeers []string
 
+	// TorProxy is a boolean that rountes only http request through tor,
+	// using 127.0.0.1:9050 by default.
+	TorProxy bool
+
 	// Dialer is an optional function closure that will be used to
 	// establish outbound TCP connections. If specified, then the
 	// connection manager will use this in place of net.Dial for all
@@ -631,6 +637,11 @@ type peerSubscription struct {
 	cancel <-chan struct{}
 }
 
+// HTTPClient holds a HTTP client in order to query using rest api if enabled.
+type HTTPClient struct {
+	client *http.Client
+}
+
 // ChainService is instantiated with functional options.
 type ChainService struct { // nolint:maligned
 	// The following variables must only be used atomically.
@@ -678,6 +689,9 @@ type ChainService struct { // nolint:maligned
 
 	// restPeers is a slice of peers that suppoorts the rest API
 	restPeers []string
+
+	// http clients
+	client *HTTPClient
 
 	// TODO: Add a map for more granular exclusion?
 	mtxCFilter sync.Mutex
@@ -958,19 +972,40 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 
 	// Adding rest peers to chainservice if spesified in config
+
 	restPeers := cfg.RestPeers
 	if len(restPeers) != 0 {
+
+		s.client, err = NewHTTPClient(cfg.TorProxy)
+		if err != nil {
+			fmt.Errorf("error setting up HTTPClient: %w", err)
+		}
 		for _, restAddr := range restPeers {
 
-			_, err = http.Get(restAddr)
+			u, err := url.Parse(restAddr)
+			if err != nil {
+				fmt.Errorf("error: %w", err)
+			}
+
+			_, err = s.nameResolver(u.Host)
 			if err != nil {
 				log.Warnf("unable to lookup address for "+
 					"%v: %v", restAddr, err)
-			} else {
+			}
+			res, err := s.client.Get(restAddr)
+			if err != nil {
+				fmt.Errorf("unable to lookup address for "+
+					"%v: %v", restAddr, err)
+				break
+			}
+			defer res.Body.Close()
+
+			if res.StatusCode == 200 {
 				s.restPeers = append(s.restPeers, restAddr)
+			} else {
+				fmt.Errorf("error: %v", err)
 			}
 		}
-
 	}
 
 	for _, addr := range permanentPeers {
@@ -1011,6 +1046,29 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 
 	return &s, nil
+}
+
+func NewHTTPClient(tor bool) (*HTTPClient, error) {
+	if tor {
+		proxyURL, err := url.Parse("socks5://127.0.0.1:9050")
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse URL:%w", err)
+		}
+		torDialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+		if err != nil {
+			return nil, fmt.Errorf("unable to setup Tor proxy:%w", err)
+		}
+
+		return &HTTPClient{&http.Client{
+			Transport: &http.Transport{Dial: torDialer.Dial},
+			Timeout:   time.Second * 5}}, nil
+	}
+	return &HTTPClient{&http.Client{Timeout: 10 * time.Second}}, nil
+}
+
+func (c HTTPClient) Get(url string) (*http.Response, error) {
+
+	return c.client.Get(url)
 }
 
 // BestBlock retrieves the most recent block's height and hash where we
