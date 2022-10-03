@@ -636,11 +636,6 @@ type peerSubscription struct {
 	cancel <-chan struct{}
 }
 
-// HTTPClient holds a HTTP client in order to query using rest api if enabled.
-type HTTPClient struct {
-	client *http.Client
-}
-
 // ChainService is instantiated with functional options.
 type ChainService struct { // nolint:maligned
 	// The following variables must only be used atomically.
@@ -690,7 +685,7 @@ type ChainService struct { // nolint:maligned
 	restPeers []string
 
 	// http clients
-	client *HTTPClient
+	client *http.Client
 
 	// TODO: Add a map for more granular exclusion?
 	mtxCFilter sync.Mutex
@@ -981,16 +976,12 @@ func NewChainService(cfg Config) (*ChainService, error) {
 		// Iterating thought restpeer defined in the config
 		// and checking if they are reachable.
 		for _, restAddr := range restPeers {
-			u, err := url.Parse(restAddr)
+			_, err := url.Parse(restAddr)
 			if err != nil {
-				log.Debugf("error: %w", err)
+				log.Debugf("error unable to parse address: %w", err)
+				break
 			}
 
-			_, err = s.nameResolver(u.Host)
-			if err != nil {
-				log.Warnf("unable to lookup address for "+
-					"%v: %v", restAddr, err)
-			}
 			res, err := s.client.Get(restAddr)
 			if err != nil {
 				log.Warnf("unable to lookup address for "+
@@ -1048,7 +1039,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 }
 
 // NewHTTPClient of type HTTPClient.
-func NewHTTPClient(tor bool) (*HTTPClient, error) {
+func NewHTTPClient(tor bool) (*http.Client, error) {
 	// We'll first check if the peer wishes to query use a tor proxy.
 	if tor {
 		proxyAddress := fmt.Sprintf("socks5://127.0.0.1:%v", "9050")
@@ -1056,19 +1047,19 @@ func NewHTTPClient(tor bool) (*HTTPClient, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to setup Tor proxy:%w", err)
 		}
-		return &HTTPClient{client: &http.Client{Transport: &http.Transport{
+		return &http.Client{Transport: &http.Transport{
 			Proxy: http.ProxyURL(proxyURL),
 			Dial: (&net.Dialer{
 				Timeout: 30 * time.Second,
-			}).Dial}}}, nil
+			}).Dial}}, nil
 	}
 	// We'll retun a reguar HTTP client.
-	return &HTTPClient{&http.Client{Timeout: 10 * time.Second}}, nil
+	return &http.Client{Timeout: 10 * time.Second}, nil
 }
 
 // Function queries the HTTPClient and with the requested url.
-func (c HTTPClient) Get(url string) (*http.Response, error) {
-	return c.client.Get(url)
+func (s *ChainService) Get(url string) (*http.Response, error) {
+	return s.client.Get(url)
 }
 
 // BestBlock retrieves the most recent block's height and hash where we
