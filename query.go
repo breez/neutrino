@@ -941,7 +941,6 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 	// we'll query for blocks
 	// if node does not support the rest API, we'll query using bitcoin's p2p
 	if len(s.restPeers) != 0 {
-
 		go func() {
 			defer s.mtxCFilter.Unlock()
 			defer close(query.filterChan)
@@ -966,7 +965,6 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 
 				// imediatly calling on to handle the results
 				s.handleCFiltersResponse(query, filter, quit)
-
 			}
 			// If there are elements left to receive, the query failed.
 			if len(query.headerIndex) > 0 {
