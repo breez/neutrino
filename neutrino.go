@@ -576,10 +576,6 @@ type Config struct {
 	// and be maintained as persistent peers that support the Rest API
 	RestPeers []string
 
-	// TorProxy is a boolean that rountes only http request through tor,
-	// using 127.0.0.1:9050 by default.
-	TorProxy bool
-
 	// Dialer is an optional function closure that will be used to
 	// establish outbound TCP connections. If specified, then the
 	// connection manager will use this in place of net.Dial for all
@@ -969,7 +965,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 
 	restPeers := cfg.RestPeers
 	if len(restPeers) != 0 {
-		s.client, err = NewHTTPClient(cfg.TorProxy)
+		s.client, err = NewHTTPClient()
 		if err != nil {
 			log.Debugf("error setting up HTTPClient: %w", err)
 		}
@@ -1039,20 +1035,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 }
 
 // NewHTTPClient of type HTTPClient.
-func NewHTTPClient(tor bool) (*http.Client, error) {
-	// We'll first check if the peer wishes to query use a tor proxy.
-	if tor {
-		proxyAddress := fmt.Sprintf("socks5://127.0.0.1:%v", "9050")
-		proxyURL, err := url.Parse(proxyAddress)
-		if err != nil {
-			return nil, fmt.Errorf("unable to setup Tor proxy:%w", err)
-		}
-		return &http.Client{Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxyURL),
-			Dial: (&net.Dialer{
-				Timeout: 30 * time.Second,
-			}).Dial}}, nil
-	}
+func NewHTTPClient() (*http.Client, error) {
 	// We'll retun a reguar HTTP client.
 	return &http.Client{Timeout: 10 * time.Second}, nil
 }
