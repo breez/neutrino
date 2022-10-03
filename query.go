@@ -947,7 +947,6 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 
 			quit := make(chan struct{})
 			for j := query.startHeight; j < query.stopHeight+1; j++ {
-
 				// Fetch blockheaders from persistent storage
 				blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(j))
 				if err != nil {
