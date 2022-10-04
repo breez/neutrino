@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -680,9 +679,6 @@ type ChainService struct { // nolint:maligned
 	// restPeers is a slice of peers that suppoorts the rest API
 	restPeers []string
 
-	// http clients
-	client *http.Client
-
 	// TODO: Add a map for more granular exclusion?
 	mtxCFilter sync.Mutex
 
@@ -965,10 +961,6 @@ func NewChainService(cfg Config) (*ChainService, error) {
 
 	restPeers := cfg.RestPeers
 	if len(restPeers) != 0 {
-		s.client, err = NewHTTPClient()
-		if err != nil {
-			log.Debugf("error setting up HTTPClient: %w", err)
-		}
 		// Iterating thought restpeer defined in the config
 		// and checking if they are reachable.
 		for _, restAddr := range restPeers {
@@ -977,20 +969,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 				log.Debugf("error unable to parse address: %w", err)
 				break
 			}
-
-			res, err := s.client.Get(restAddr)
-			if err != nil {
-				log.Warnf("unable to lookup address for "+
-					"%v: %v", restAddr, err)
-				break
-			}
-			defer res.Body.Close()
-
-			if res.StatusCode == 200 {
-				s.restPeers = append(s.restPeers, restAddr)
-			} else {
-				log.Warnf("error connecting to host: %v", err)
-			}
+			s.restPeers = append(s.restPeers, restAddr)
 		}
 	}
 
@@ -1032,17 +1011,6 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 
 	return &s, nil
-}
-
-// NewHTTPClient of type HTTPClient.
-func NewHTTPClient() (*http.Client, error) {
-	// We'll retun a reguar HTTP client.
-	return &http.Client{Timeout: 10 * time.Second}, nil
-}
-
-// Function queries the HTTPClient and with the requested url.
-func (s *ChainService) Get(url string) (*http.Response, error) {
-	return s.client.Get(url)
 }
 
 // BestBlock retrieves the most recent block's height and hash where we
