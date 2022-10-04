@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net/http"
 	"sync"
 	"time"
 
@@ -63,7 +64,7 @@ var (
 
 	// RestHostIndex specifies the current host to query using if the
 	// rest API is enabled.
-	RestHostIndex = 0
+	restHostIndex = 0
 
 	// ErrFilterFetchFailed is returned in case fetching a compact filter
 	// fails.
@@ -844,10 +845,10 @@ func (s *ChainService) handleCFiltersResponse(q *cfiltersQuery,
 
 // getCfilterRest gets a cFilter from its peers. Given that, it supports the rest
 // API.
-func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int) (*wire.MsgCFilter, error) {
+func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, c *http.Client) (*wire.MsgCFilter, error) {
 	// Getting the basic blockfilter with the blockhash
-	res, err := s.client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[hostIndex], h.String()))
-
+	res, err := c.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[hostIndex], h.String()))
+	// TODO(ubbabeck) add functionality to query another peer if avalible
 	if err != nil {
 		return nil, fmt.Errorf("client: %w", err)
 	}
@@ -940,12 +941,14 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 	// First attempting to query the rest API and if optimistic batching is
 	// we'll query for blocks
 	// if node does not support the rest API, we'll query using bitcoin's p2p
-	if len(s.restPeers) != 0 {
-		go func() {
-			defer s.mtxCFilter.Unlock()
-			defer close(query.filterChan)
+	go func() {
+		defer s.mtxCFilter.Unlock()
+		defer close(query.filterChan)
 
+		if len(s.restPeers) != 0 {
 			quit := make(chan struct{})
+			// We'll need a http client in order to query the host
+			client := &http.Client{Timeout: 10 * time.Second}
 			for j := query.startHeight; j < query.stopHeight+1; j++ {
 				// Fetch blockheaders from persistent storage
 				blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(j))
@@ -955,29 +958,16 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 					return
 				}
 				hash := blockHeaders.BlockHash()
-
-				filter, err := s.getCFilterRest(hash, RestHostIndex)
+				filter, err := s.getCFilterRest(hash, restHostIndex, client)
 				if err != nil {
 					log.Errorf("error: %w", err)
 					return
 				}
-
 				// imediatly calling on to handle the results
 				s.handleCFiltersResponse(query, filter, quit)
+
 			}
-			// If there are elements left to receive, the query failed.
-			if len(query.headerIndex) > 0 {
-				numFilters := query.stopHeight - query.startHeight + 1
-				numRecv := numFilters - int64(len(query.headerIndex))
-				log.Errorf("Query failed with %d out of %d filters "+
-					"received", numRecv, numFilters)
-				return
-			}
-		}()
-	} else {
-		go func() {
-			defer s.mtxCFilter.Unlock()
-			defer close(query.filterChan)
+		} else {
 			s.queryPeers(
 				// Send a wire.MsgGetCFilters.
 				query.queryMsg(),
@@ -987,18 +977,17 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 				func(_ *ServerPeer, resp wire.Message, quit chan<- struct{}) {
 					s.handleCFiltersResponse(query, resp, quit)
 				},
-				query.options...,
-			)
-			// If there are elements left to receive, the query failed.
-			if len(query.headerIndex) > 0 {
-				numFilters := query.stopHeight - query.startHeight + 1
-				numRecv := numFilters - int64(len(query.headerIndex))
-				log.Errorf("Query failed with %d out of %d filters "+
-					"received", numRecv, numFilters)
-				return
-			}
-		}()
-	}
+				query.options...)
+		}
+		// If there are elements left to receive, the query failed.
+		if len(query.headerIndex) > 0 {
+			numFilters := query.stopHeight - query.startHeight + 1
+			numRecv := numFilters - int64(len(query.headerIndex))
+			log.Errorf("Query failed with %d out of %d filters "+
+				"received", numRecv, numFilters)
+			return
+		}
+	}()
 
 	var ok bool
 	var resultFilter *gcs.Filter
