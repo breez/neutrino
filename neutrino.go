@@ -958,18 +958,17 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 
 	// Adding rest peers to chainservice if spesified in config
-
-	restPeers := cfg.RestPeers
-	if len(restPeers) != 0 {
+	if len(cfg.RestPeers) > 0 {
 		// Iterating thought restpeer defined in the config
-		// and checking if they are reachable.
-		for _, restAddr := range restPeers {
+		// and checking if the url is ok.
+		for _, restAddr := range cfg.RestPeers {
 			_, err := url.Parse(restAddr)
 			if err != nil {
 				log.Debugf("error unable to parse address: %w", err)
-				break
+				continue
+			} else {
+				s.restPeers = append(s.restPeers, restAddr)
 			}
-			s.restPeers = append(s.restPeers, restAddr)
 		}
 	}
 

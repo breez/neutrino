@@ -935,7 +935,7 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 
 	// With all the necessary items retrieved, we'll launch our concurrent
 	// query to the set of connected peers.
-	log.Debugf("Fetching filters for heights=[%v, %v], stophash=%v\n",
+	log.Debugf("Fetching filters for heights=[%v, %v], stophash=%v",
 		query.startHeight, query.stopHeight, query.stopHash)
 
 	// First attempting to query the rest API and if optimistic batching is
@@ -945,10 +945,10 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		defer s.mtxCFilter.Unlock()
 		defer close(query.filterChan)
 
-		if len(s.restPeers) != 0 {
+		if len(s.restPeers) > 0 {
 			quit := make(chan struct{})
 			// We'll need a http client in order to query the host
-			client := &http.Client{Timeout: 10 * time.Second}
+			client := &http.Client{Timeout: QueryTimeout}
 			for j := query.startHeight; j < query.stopHeight+1; j++ {
 				// Fetch blockheaders from persistent storage
 				blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(j))
