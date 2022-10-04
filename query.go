@@ -965,7 +965,6 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 				}
 				// imediatly calling on to handle the results
 				s.handleCFiltersResponse(query, filter, quit)
-
 			}
 		} else {
 			s.queryPeers(
