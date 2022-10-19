@@ -853,7 +853,6 @@ func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, c *http.C
 		return nil, fmt.Errorf("client: %w", err)
 	}
 	defer res.Body.Close()
-
 	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("http.Get(%v) error: %w", res, err)
@@ -866,6 +865,7 @@ func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, c *http.C
 	if err != nil {
 		return nil, fmt.Errorf("error deserialising object:%w", err)
 	}
+	log.Infof("Fetched CFilter for hash %v for host %v", h, s.restPeers[restHostIndex])
 	return filter, nil
 }
 
