@@ -572,7 +572,7 @@ type Config struct {
 	AddPeers []string
 
 	// RestPeers is a slice of host that should be connected to on startup,
-	// and be maintained as persistent peers that support the Rest API
+	// and be maintained as persistent peers that support the Rest API.
 	RestPeers []string
 
 	// Dialer is an optional function closure that will be used to
@@ -676,7 +676,7 @@ type ChainService struct { // nolint:maligned
 	// will notify each time a new peer is connected.
 	peerSubscribers []*peerSubscription
 
-	// restPeers is a slice of peers that suppoorts the rest API
+	// restPeers is a slice of peers that suppoorts the rest API.
 	restPeers []string
 
 	// TODO: Add a map for more granular exclusion?
@@ -957,7 +957,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 		permanentPeers = cfg.AddPeers
 	}
 
-	// Adding rest peers to chainservice if spesified in config
+	// Adding rest peers to chainservice if spesified in config.
 	if len(cfg.RestPeers) > 0 {
 		// Iterating thought restpeer defined in the config
 		// and checking if the url is ok.
@@ -1653,7 +1653,7 @@ func (s *ChainService) Start() error {
 	return nil
 }
 
-// IsStarted returns true if Start() was called at least once
+// IsStarted returns true if Start() was called at least once.
 func (s *ChainService) IsStarted() bool {
 	return s.started > 0
 }
