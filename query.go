@@ -3,10 +3,7 @@
 package neutrino
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"net/http"
 	"sync"
 	"time"
 
@@ -843,32 +840,6 @@ func (s *ChainService) handleCFiltersResponse(q *cfiltersQuery,
 	}
 }
 
-// getCfilterRest gets a cFilter from its peers. Given that, it supports the rest
-// API.
-func (s *ChainService) getCFilterRest(h chainhash.Hash, hostIndex int, c *http.Client) (*wire.MsgCFilter, error) {
-	// Getting the basic blockfilter with the blockhash
-	res, err := c.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin", s.restPeers[hostIndex], h.String()))
-	// TODO(ubbabeck) add functionality to query another peer if avalible
-	if err != nil {
-		return nil, fmt.Errorf("client: %w", err)
-	}
-	defer res.Body.Close()
-	bodyBytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		return nil, fmt.Errorf("http.Get(%v) error: %w", res, err)
-	}
-
-	// Creating message and deserialising the results.
-	filter := &wire.MsgCFilter{}
-	reader := bytes.NewBuffer(bodyBytes)
-	err = filter.Deserialize(reader)
-	if err != nil {
-		return nil, fmt.Errorf("error deserialising object:%w", err)
-	}
-	log.Infof("Fetched CFilter for hash %v for host %v", h, s.restPeers[restHostIndex])
-	return filter, nil
-}
-
 // GetCFilter gets a cfilter from the database. Failing that, it requests the
 // cfilter from the network and writes it to the database. If extended is true,
 // an extended filter will be queried for. Otherwise, we'll fetch the regular
@@ -946,26 +917,7 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		defer close(query.filterChan)
 
 		if len(s.restPeers) > 0 {
-			quit := make(chan struct{})
-			// We'll need a http client in order to query the host
-			client := &http.Client{Timeout: QueryTimeout}
-			for j := query.startHeight; j < query.stopHeight+1; j++ {
-				// Fetch blockheaders from persistent storage
-				blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(j))
-				if err != nil {
-					log.Errorf("unable to get header for start "+
-						"block=%v: %v", blockHash, err)
-					return
-				}
-				hash := blockHeaders.BlockHash()
-				filter, err := s.getCFilterRest(hash, restHostIndex, client)
-				if err != nil {
-					log.Errorf("error: %w", err)
-					return
-				}
-				// imediatly calling on to handle the results
-				s.handleCFiltersResponse(query, filter, quit)
-			}
+			s.queryRestPeers(blockHash, query, 10, query.startHeight, query.stopHeight)
 		} else {
 			s.queryPeers(
 				// Send a wire.MsgGetCFilters.
