@@ -917,7 +917,7 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		defer close(query.filterChan)
 
 		if len(s.restPeers) > 0 {
-			s.queryRestPeers(blockHash, query, 10, query.startHeight, query.stopHeight)
+			s.queryRestPeers(blockHash, query, 5, query.startHeight, query.stopHeight)
 		} else {
 			s.queryPeers(
 				// Send a wire.MsgGetCFilters.
