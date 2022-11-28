@@ -10,9 +10,6 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-// Number of download workers that query rest peers in parallel
-const numberOfRestWorkers = 10
-
 func (s *ChainService) queryRestPeers(
 	blockHash chainhash.Hash,
 	query *cfiltersQuery,
@@ -30,7 +27,7 @@ func (s *ChainService) queryRestPeers(
 	client := &http.Client{Timeout: QueryTimeout}
 
 	// We use 10 workers
-	for i := 0; i < numberOfRestWorkers; i++ {
+	for i := 0; i < numWorkers; i++ {
 
 		// spin up a worker
 		go func() {
