@@ -3,7 +3,10 @@ package neutrino
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
@@ -24,13 +27,30 @@ func (s *ChainService) queryRestPeers(
 		return
 	}
 	hash := blockHeaders.BlockHash()
-	res, err := client.Get(fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restHostIndex], hash.String(), endBlock-startBlock+1))
-	// TODO(ubbabeck) add functionality to query another peer if avalible
+	validPeers := make([]int, 0, len(s.restPeers))
+	for i, p := range s.restPeers {
+		if p.failures == 0 || time.Since(p.lastFailure) > 10*time.Second {
+			validPeers = append(validPeers, i)
+		}
+	}
+	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
+	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, hash.String(), endBlock-startBlock+1)
+	res, err := client.Get(URL)
 	if err != nil {
-		log.Errorf("error: %v", err)
+		s.restPeers[restPeerIndex].failures++
+		s.restPeers[restPeerIndex].lastFailure = time.Now()
+		log.Errorf("queryRestPeers - Get (%v) error: %v", URL, err)
 		return
 	}
 	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		s.restPeers[restPeerIndex].failures++
+		s.restPeers[restPeerIndex].lastFailure = time.Now()
+		log.Errorf("queryRestPeers - Get (%v) status != OK: %v", URL, res.Status)
+		io.Copy(ioutil.Discard, res.Body)
+		return
+	}
+	s.restPeers[restPeerIndex].failures = 0
 
 	// Creating message and deserialising the results.
 	for {
