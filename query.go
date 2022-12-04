@@ -59,10 +59,6 @@ var (
 	// `getdata` and other similar messages.
 	QueryEncoding = wire.WitnessEncoding
 
-	// RestHostIndex specifies the current host to query using if the
-	// rest API is enabled.
-	restHostIndex = 0
-
 	// ErrFilterFetchFailed is returned in case fetching a compact filter
 	// fails.
 	ErrFilterFetchFailed = fmt.Errorf("unable to fetch cfilter")

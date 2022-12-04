@@ -631,6 +631,12 @@ type peerSubscription struct {
 	cancel <-chan struct{}
 }
 
+type restPeer struct {
+	URL         string
+	failures    uint
+	lastFailure time.Time
+}
+
 // ChainService is instantiated with functional options.
 type ChainService struct { // nolint:maligned
 	// The following variables must only be used atomically.
@@ -677,7 +683,7 @@ type ChainService struct { // nolint:maligned
 	peerSubscribers []*peerSubscription
 
 	// restPeers is a slice of peers that suppoorts the rest API.
-	restPeers []string
+	restPeers []restPeer
 
 	// TODO: Add a map for more granular exclusion?
 	mtxCFilter sync.Mutex
@@ -967,7 +973,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 				log.Debugf("error unable to parse address: %w", err)
 				continue
 			} else {
-				s.restPeers = append(s.restPeers, restAddr)
+				s.restPeers = append(s.restPeers, restPeer{URL: restAddr, failures: 0, lastFailure: time.Time{}})
 			}
 		}
 	}
