@@ -33,6 +33,10 @@ func (s *ChainService) queryRestPeers(
 			validPeers = append(validPeers, i)
 		}
 	}
+	if len(validPeers) == 0 {
+		log.Errorf("queryRestPeers - No valid rest peer")
+		return
+	}
 	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
 	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, hash.String(), endBlock-startBlock+1)
 	res, err := client.Get(URL)
