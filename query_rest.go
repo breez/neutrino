@@ -13,20 +13,9 @@ import (
 )
 
 func (s *ChainService) queryRestPeers(
-	blockHash chainhash.Hash,
-	query *cfiltersQuery,
-	numWorkers int,
-	startBlock int64,
-	endBlock int64) {
+	blockHash chainhash.Hash, query *cfiltersQuery) {
 	quit := make(chan struct{})
 	client := &http.Client{Timeout: QueryTimeout}
-	blockHeaders, err := s.BlockHeaders.FetchHeaderByHeight(uint32(endBlock))
-	if err != nil {
-		log.Errorf("unable to get header for start "+
-			"block=%v: %v", blockHash, err)
-		return
-	}
-	hash := blockHeaders.BlockHash()
 	validPeers := make([]int, 0, len(s.restPeers))
 	for i, p := range s.restPeers {
 		if p.failures == 0 || time.Since(p.lastFailure) > 10*time.Second {
@@ -38,7 +27,7 @@ func (s *ChainService) queryRestPeers(
 		return
 	}
 	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
-	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, hash.String(), endBlock-startBlock+1)
+	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, query.stopHash.String(), query.stopHeight-query.startHeight+1)
 	res, err := client.Get(URL)
 	if err != nil {
 		s.restPeers[restPeerIndex].failures++
