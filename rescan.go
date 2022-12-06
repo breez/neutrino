@@ -892,6 +892,10 @@ rescanLoop:
 				scanning = ro.startTime.Before(curHeader.Timestamp)
 			}
 			err = notifyBlock(chain, ro, curHeader, curStamp, scanning)
+			if err == ErrFilterFetchFailed {
+				time.Sleep(1 * time.Second)
+				continue rescanLoop
+			}
 			if err != nil {
 				return err
 			}
