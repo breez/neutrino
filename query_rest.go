@@ -26,6 +26,7 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	}
 	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
 	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, query.stopHash.String(), query.stopHeight-query.startHeight+1)
+	log.Infof("%v getting CFilter from %v", s.restPeers[restPeerIndex], URL)
 	res, err := client.Get(URL)
 	if err != nil {
 		s.restPeers[restPeerIndex].failures++
