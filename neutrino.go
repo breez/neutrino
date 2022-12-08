@@ -184,7 +184,7 @@ type ServerPeer struct {
 
 // NewServerPeer returns a new ServerPeer instance. The peer needs to be set by
 // the caller.
-func NewServerPeer(s *ChainService, isPersistent bool) *ServerPeer {
+func newServerPeer(s *ChainService, isPersistent bool) *ServerPeer {
 	return &ServerPeer{
 		server:           s,
 		persistent:       isPersistent,
@@ -1571,7 +1571,7 @@ func (s *ChainService) outboundPeerConnected(c *connmgr.ConnReq, conn net.Conn) 
 		return
 	}
 
-	sp := NewServerPeer(s, c.Permanent)
+	sp := newServerPeer(s, c.Permanent)
 	p, err := peer.NewOutboundPeer(NewPeerConfig(sp), peerAddr)
 	if err != nil {
 		log.Debugf("Cannot create outbound peer %s: %s", c.Addr, err)
