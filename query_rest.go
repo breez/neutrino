@@ -8,12 +8,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
 )
 
-func (s *ChainService) queryRestPeers(
-	blockHash chainhash.Hash, query *cfiltersQuery) {
+func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	quit := make(chan struct{})
 	client := &http.Client{Timeout: QueryTimeout}
 	validPeers := make([]int, 0, len(s.restPeers))
@@ -40,7 +38,10 @@ func (s *ChainService) queryRestPeers(
 		s.restPeers[restPeerIndex].failures++
 		s.restPeers[restPeerIndex].lastFailure = time.Now()
 		log.Errorf("queryRestPeers - Get (%v) status != OK: %v", URL, res.Status)
-		io.Copy(ioutil.Discard, res.Body)
+		_, err = io.Copy(ioutil.Discard, res.Body)
+		if err != nil {
+			log.Errorf("error in io.Copy: %v", err)
+		}
 		return
 	}
 	s.restPeers[restPeerIndex].failures = 0

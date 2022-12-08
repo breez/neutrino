@@ -913,7 +913,7 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		defer close(query.filterChan)
 
 		if len(s.restPeers) > 0 {
-			s.queryRestPeers(blockHash, query)
+			s.queryRestPeers(query)
 		} else {
 			s.queryPeers(
 				// Send a wire.MsgGetCFilters.
