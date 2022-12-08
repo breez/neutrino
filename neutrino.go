@@ -967,7 +967,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	if len(cfg.RestPeers) > 0 {
 		// Iterating thought restpeer defined in the config
 		// and checking if the url is ok.
-		log.Infof("Rest peers are not empty, querying with restpeers")
+		log.Infof("Rest peers are not empty, querying from restpeers")
 		for _, restAddr := range cfg.RestPeers {
 			_, err := url.Parse(restAddr)
 			if err != nil {
