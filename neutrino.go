@@ -1502,8 +1502,8 @@ func (s *ChainService) SendTransaction(tx *wire.MsgTx) error {
 	return s.broadcaster.Broadcast(tx)
 }
 
-// NewPeerConfig returns the configuration for the given ServerPeer.
-func NewPeerConfig(sp *ServerPeer) *peer.Config {
+// newPeerConfig returns the configuration for the given ServerPeer.
+func newPeerConfig(sp *ServerPeer) *peer.Config {
 	return &peer.Config{
 		Listeners: peer.MessageListeners{
 			OnVersion:   sp.OnVersion,
@@ -1572,7 +1572,7 @@ func (s *ChainService) outboundPeerConnected(c *connmgr.ConnReq, conn net.Conn) 
 	}
 
 	sp := newServerPeer(s, c.Permanent)
-	p, err := peer.NewOutboundPeer(NewPeerConfig(sp), peerAddr)
+	p, err := peer.NewOutboundPeer(newPeerConfig(sp), peerAddr)
 	if err != nil {
 		log.Debugf("Cannot create outbound peer %s: %s", c.Addr, err)
 		disconnect()
