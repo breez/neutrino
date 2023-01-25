@@ -57,6 +57,7 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 			log.Errorf("error deserialising object: %v", err)
 			return
 		}
+		log.Infof("Received cfilter Restpeer=%v, stophash=%v,count=%v", s.restPeers[restPeerIndex].URL, query.stopHash, query.stopHeight-query.startHeight+1)
 		s.handleCFiltersResponse(query, filter, quit)
 	}
 }
