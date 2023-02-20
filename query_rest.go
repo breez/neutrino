@@ -26,6 +26,7 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	}
 	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
 	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, query.stopHash.String(), query.stopHeight-query.startHeight+1)
+	log.Infof("getting %v filters from height %v to height %v, using URL: %v", query.stopHeight-query.startHeight+1, query.startHeight, query.stopHeight, URL)
 	res, err := client.Get(URL)
 	if err != nil {
 		s.restPeers[restPeerIndex].failures++
@@ -47,7 +48,10 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	s.restPeers[restPeerIndex].failures = 0
 
 	// Creating message and deserialising the results.
+	count := 0
 	for {
+		count++
+		log.Infof("Decoding filter #%v", count)
 		filter := &wire.MsgCFilter{}
 		err = filter.BtcDecode(res.Body, 0, wire.BaseEncoding)
 		if err == io.EOF {
@@ -57,7 +61,8 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 			log.Errorf("error deserialising object: %v", err)
 			return
 		}
-		log.Infof("Received cfilter Restpeer=%v, stophash=%v,count=%v", s.restPeers[restPeerIndex].URL, query.stopHash, query.stopHeight-query.startHeight+1)
+		log.Infof("handleCFilterRestponse for hash: %v", filter.BlockHash)
 		s.handleCFiltersResponse(query, filter, quit)
+		log.Infof("handleCFilterRestponse done for hash: %v", filter.BlockHash)
 	}
 }
