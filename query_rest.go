@@ -48,10 +48,10 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	s.restPeers[restPeerIndex].failures = 0
 
 	// Creating message and deserialising the results.
+	log.Infof("Calling handleCFilterRestponse for each received filter from URL: %v", URL)
 	count := 0
 	for {
 		count++
-		log.Infof("Decoding filter #%v", count)
 		filter := &wire.MsgCFilter{}
 		err = filter.BtcDecode(res.Body, 0, wire.BaseEncoding)
 		if err == io.EOF {
@@ -61,8 +61,7 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 			log.Errorf("error deserialising object: %v", err)
 			return
 		}
-		log.Infof("handleCFilterRestponse for hash: %v", filter.BlockHash)
 		s.handleCFiltersResponse(query, filter, quit)
-		log.Infof("handleCFilterRestponse done for hash: %v", filter.BlockHash)
 	}
+	log.Infof("Called handleCFilterRestponse for %v filter received from URL: %v", count, URL)
 }
