@@ -13,10 +13,10 @@ import (
 
 func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 	quit := make(chan struct{})
-	client := &http.Client{Timeout: QueryTimeout}
+	client := &http.Client{Timeout: QueryPeerConnectTimeout}
 	validPeers := make([]int, 0, len(s.restPeers))
 	for i, p := range s.restPeers {
-		if p.failures == 0 || time.Since(p.lastFailure) > 10*time.Second {
+		if p.failures == 0 || time.Since(p.lastFailure) > QueryPeerConnectTimeout {
 			validPeers = append(validPeers, i)
 		}
 	}
