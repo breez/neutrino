@@ -897,9 +897,6 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		return nil, err
 	}
 
-	// We will first check if the node supports rest API
-	// and try to get the filter from there
-
 	// With all the necessary items retrieved, we'll launch our concurrent
 	// query to the set of connected peers.
 	log.Debugf("Fetching filters for heights=[%v, %v], stophash=%v",
@@ -912,9 +909,11 @@ func (s *ChainService) GetCFilter(blockHash chainhash.Hash,
 		defer s.mtxCFilter.Unlock()
 		defer close(query.filterChan)
 
-		if len(s.restPeers) > 0 {
-			s.queryRestPeers(query)
+		restPeerIndex, err := s.selectRestPeerIndex()
+		if err == nil {
+			s.queryRestPeers(query, restPeerIndex)
 		} else {
+			log.Infof("Could not select rest peer: %v", err)
 			s.queryPeers(
 				// Send a wire.MsgGetCFilters.
 				query.queryMsg(),

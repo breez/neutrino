@@ -10,21 +10,9 @@ import (
 	"github.com/btcsuite/btcd/wire"
 )
 
-func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
+func (s *ChainService) queryRestPeers(query *cfiltersQuery, restPeerIndex int) {
 	quit := make(chan struct{})
 	client := &http.Client{}
-	validPeers := make([]int, 0, len(s.restPeers))
-	for i, p := range s.restPeers {
-		if p.failures == 0 || time.Since(p.lastFailure) > 10*time.Second {
-			validPeers = append(validPeers, i)
-		}
-	}
-	if len(validPeers) == 0 {
-		log.Errorf("queryRestPeers - No valid rest peer")
-		return
-	}
-	// #nosec G404 -- No need to have true randomness when selecting restpeer.
-	restPeerIndex := validPeers[rand.Intn(len(validPeers))]
 	URL := fmt.Sprintf("%v/rest/blockfilter/basic/%v.bin?count=%v", s.restPeers[restPeerIndex].URL, query.stopHash.String(), query.stopHeight-query.startHeight+1)
 	log.Infof("getting %v filters from height %v to height %v, using URL: %v", query.stopHeight-query.startHeight+1, query.startHeight, query.stopHeight, URL)
 	res, err := client.Get(URL)
@@ -64,4 +52,20 @@ func (s *ChainService) queryRestPeers(query *cfiltersQuery) {
 		s.handleCFiltersResponse(query, filter, quit)
 	}
 	log.Infof("Called handleCFilterRestponse for %v filter received from URL: %v", count, URL)
+}
+
+func (s *ChainService) selectRestPeerIndex() (int, error) {
+	validPeers := make([]int, 0, len(s.restPeers))
+	for i, p := range s.restPeers {
+		if p.failures == 0 || time.Since(p.lastFailure) > 10*time.Second {
+			validPeers = append(validPeers, i)
+		}
+	}
+
+	if len(validPeers) == 0 {
+		return -1, fmt.Errorf("no valid rest peer")
+	}
+
+	// #nosec G404 -- No need to have true randomness when selecting restpeer.
+	return validPeers[rand.Intn(len(validPeers))], nil
 }
