@@ -33,6 +33,14 @@ type queryJob struct {
 	*Request
 }
 
+func (q *queryJob) AsRequest() *Request {
+	return &Request{
+		Req:        q.Req,
+		RestReq:    q.RestReq,
+		HandleResp: q.HandleResp,
+	}
+}
+
 // queryJob should satisfy the Task interface in order to be sorted by the
 // workQueue.
 var _ Task = (*queryJob)(nil)
@@ -47,7 +55,7 @@ func (q *queryJob) Index() uint64 {
 // jobResult is the final result of the worker's handling of the queryJob.
 type jobResult struct {
 	job  *queryJob
-	peer Peer
+	peer Addressable
 	err  error
 }
 
@@ -72,6 +80,10 @@ func NewWorker(peer Peer) Worker {
 		peer:    peer,
 		nextJob: make(chan *queryJob),
 	}
+}
+
+func (w *worker) SupportsJob(req *Request) bool {
+	return true
 }
 
 // Run starts the worker. The worker will supply its peer with queries, and
