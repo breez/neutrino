@@ -445,6 +445,7 @@ func (q *cfiltersQuery) request() *query.Request {
 
 	return &query.Request{
 		Req:        msg,
+		RestReq:    fmt.Sprintf("/rest/blockfilter/basic/%v.bin?count=%v", q.stopHash.String(), q.stopHeight-q.startHeight+1),
 		HandleResp: q.handleResponse,
 	}
 }
