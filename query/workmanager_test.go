@@ -38,6 +38,10 @@ func (m *mockWorker) Run(results chan<- *jobResult,
 	}
 }
 
+func (m *mockWorker) SupportsJob(req *Request) bool {
+	return true
+}
+
 type mockPeerRanking struct {
 	less func(i, j string) bool
 }

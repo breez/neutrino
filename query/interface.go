@@ -127,6 +127,9 @@ type Request struct {
 	// Req is the message request to send.
 	Req wire.Message
 
+	// RestReq is the url suffix in order to query this message from rest peers.
+	RestReq string
+
 	// HandleResp is a response handler that will be called for every
 	// message received from the peer that the request was made to. It
 	// should validate the response against the request made, and return a
@@ -178,10 +181,14 @@ type Peer interface {
 	// the subscription.
 	SubscribeRecvMsg() (<-chan wire.Message, func())
 
-	// Addr returns the address of this peer.
-	Addr() string
-
 	// OnDisconnect returns a channel that will be closed when this peer is
 	// disconnected.
 	OnDisconnect() <-chan struct{}
+
+	Addressable
+}
+
+type Addressable interface {
+	// Addr returns the address of this peer.
+	Addr() string
 }

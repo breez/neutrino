@@ -47,6 +47,11 @@ type Worker interface {
 	// delivered on the results channel (except when the quit channel has
 	// been closed).
 	NewJob() chan<- *queryJob
+
+	// SupportsJob returns a value indicating whether the worker can handle the
+	// requested job. A rest peer can only handle CFilters, so it will return
+	// false on any other job.
+	SupportsJob(req *Request) bool
 }
 
 // PeerRanking is an interface that must be satisfied by the underlying module
@@ -86,6 +91,8 @@ type Config struct {
 	//
 	// The returned function closure is called to cancel the subscription.
 	ConnectedPeers func() (<-chan Peer, func(), error)
+
+	RestPeers []string
 
 	// NewWorker is function closure that should start a new worker. We
 	// make this configurable to easily mock the worker used during tests.
@@ -204,6 +211,33 @@ func (w *peerWorkManager) workDispatcher() {
 
 	workers := make(map[string]*activeWorker)
 
+	// Initialize the REST workers, they are always active.
+	for _, restPeerUrl := range w.cfg.RestPeers {
+		restPeer := NewRestPeer(restPeerUrl)
+		log.Debugf("Starting worker for peer %v",
+			restPeer.Addr())
+		worker := NewRestWorker(restPeer)
+
+		// We'll create a channel that will close after the
+		// worker's Run method returns, to know when we can
+		// remove it from our set of active workers.
+		onExit := make(chan struct{})
+		workers[restPeer.Addr()] = &activeWorker{
+			w:         worker,
+			activeJob: nil,
+			onExit:    onExit,
+		}
+
+		w.cfg.Ranking.AddPeer(restPeer.Addr())
+
+		w.wg.Add(1)
+		go func() {
+			defer w.wg.Done()
+			defer close(onExit)
+
+			worker.Run(w.jobResults, w.quit)
+		}()
+	}
 Loop:
 	for {
 		// If the work queue is non-empty, we'll take out the first
@@ -217,6 +251,10 @@ Loop:
 				// Only one active job at a time is currently
 				// supported.
 				if r.activeJob != nil {
+					continue
+				}
+
+				if !r.w.SupportsJob(next.AsRequest()) {
 					continue
 				}
 

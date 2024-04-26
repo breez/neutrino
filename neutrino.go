@@ -571,6 +571,10 @@ type Config struct {
 	// and be maintained as persistent peers.
 	AddPeers []string
 
+	// RestPeers is a slice of host that should be connected to on startup,
+	// and be maintained as persistent peers that support the Rest API.
+	RestPeers []string
+
 	// Dialer is an optional function closure that will be used to
 	// establish outbound TCP connections. If specified, then the
 	// connection manager will use this in place of net.Dial for all
@@ -740,6 +744,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 	}
 	s.workManager = query.NewWorkManager(&query.Config{
 		ConnectedPeers: s.ConnectedPeers,
+		RestPeers:      cfg.RestPeers,
 		NewWorker:      query.NewWorker,
 		Ranking:        query.NewPeerRanking(),
 	})
