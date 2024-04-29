@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
@@ -58,7 +59,7 @@ func (p *restPeer) Query(ctx context.Context, suffix string) ([]wire.Message, er
 		if err != nil {
 			log.Errorf("error in io.Copy: %v", err)
 		}
-		return nil, err
+		return nil, fmt.Errorf("received status %v", res.Status)
 	}
 
 	var msgs []wire.Message
