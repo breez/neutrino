@@ -2,6 +2,7 @@ package query
 
 import (
 	"sort"
+	"strings"
 )
 
 const (
@@ -49,6 +50,18 @@ func (p *peerRanking) Order(peers []string) {
 		if !ok {
 			score2 = defaultScore
 		}
+
+		// Favor rest peer over p2p peer for equal scores.
+		if score1 == score2 {
+			if strings.HasPrefix(peers[i], "http") {
+				return true
+			}
+
+			if strings.HasPrefix(peers[j], "http") {
+				return false
+			}
+		}
+
 		return score1 < score2
 	})
 }
