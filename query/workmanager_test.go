@@ -90,7 +90,8 @@ func startWorkManager(t *testing.T, numWorkers int) (WorkManager,
 			workerChan <- m
 			return m
 		},
-		Ranking: &mockPeerRanking{},
+		Ranking:     &mockPeerRanking{},
+		RestRanking: &mockPeerRanking{},
 	})
 
 	// Start the work manager.

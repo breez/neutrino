@@ -99,8 +99,12 @@ type Config struct {
 	NewWorker func(Peer) Worker
 
 	// Ranking is used to rank the connected peers when determining who to
-	// give work to.
+	// give work to, excluding rest peers.
 	Ranking PeerRanking
+
+	// RestRanking is used to rank the connected peers when determining who to
+	// give work to, incuding rest peers.
+	RestRanking PeerRanking
 }
 
 // peerWorkManager is the main access point for outside callers, and satisfies
@@ -228,7 +232,7 @@ func (w *peerWorkManager) workDispatcher() {
 			onExit:    onExit,
 		}
 
-		w.cfg.Ranking.AddPeer(restPeer.Addr(), true)
+		w.cfg.RestRanking.AddPeer(restPeer.Addr(), true)
 
 		w.wg.Add(1)
 		go func() {
@@ -262,7 +266,7 @@ Loop:
 			}
 
 			// Use the historical data to rank them.
-			w.cfg.Ranking.Order(freeWorkers)
+			w.getRanking(isRestJob(next)).Order(freeWorkers)
 
 			// Give the job to the highest ranked peer with free
 			// slots available.
@@ -318,6 +322,7 @@ Loop:
 			}
 
 			w.cfg.Ranking.AddPeer(peer.Addr(), false)
+			w.cfg.RestRanking.AddPeer(peer.Addr(), false)
 
 			w.wg.Add(1)
 			go func() {
@@ -371,7 +376,7 @@ Loop:
 			// maximum number of retries.
 			case result.err != nil:
 				// Punish the peer for the failed query.
-				w.cfg.Ranking.Punish(result.peer.Addr())
+				w.getRanking(isRestJob(result.job)).Punish(result.peer.Addr())
 
 				if batch != nil && !batch.noRetryMax {
 					result.job.tries++
@@ -422,7 +427,7 @@ Loop:
 			// status of the batch this query is a part of.
 			default:
 				// Reward the peer for the successful query.
-				w.cfg.Ranking.Reward(result.peer.Addr())
+				w.getRanking(isRestJob(result.job)).Reward(result.peer.Addr())
 
 				// Decrement the number of queries remaining in
 				// the batch.
@@ -522,4 +527,16 @@ func (w *peerWorkManager) Query(requests []*Request,
 	}
 
 	return errChan
+}
+
+func (w *peerWorkManager) getRanking(isRest bool) PeerRanking {
+	if isRest {
+		return w.cfg.RestRanking
+	}
+
+	return w.cfg.Ranking
+}
+
+func isRestJob(job *queryJob) bool {
+	return job.RestReq != ""
 }
