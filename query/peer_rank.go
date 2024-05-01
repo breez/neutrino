@@ -2,7 +2,6 @@ package query
 
 import (
 	"sort"
-	"strings"
 )
 
 const (
@@ -23,7 +22,8 @@ const (
 type peerRanking struct {
 	// rank keeps track of the current set of peers and their score. A
 	// lower score is better.
-	rank map[string]uint64
+	rank      map[string]uint64
+	preferred map[string]bool
 }
 
 // A compile time check to ensure peerRanking satisfies the PeerRanking
@@ -33,7 +33,8 @@ var _ PeerRanking = (*peerRanking)(nil)
 // NewPeerRanking returns a new, empty ranking.
 func NewPeerRanking() PeerRanking {
 	return &peerRanking{
-		rank: make(map[string]uint64),
+		rank:      make(map[string]uint64),
+		preferred: make(map[string]bool),
 	}
 }
 
@@ -51,13 +52,13 @@ func (p *peerRanking) Order(peers []string) {
 			score2 = defaultScore
 		}
 
-		// Favor rest peer over p2p peer for equal scores.
+		// Favor preferred peers for equal scores.
 		if score1 == score2 {
-			if strings.HasPrefix(peers[i], "http") {
+			if prefer1 := p.preferred[peers[i]]; prefer1 {
 				return true
 			}
 
-			if strings.HasPrefix(peers[j], "http") {
+			if prefer2 := p.preferred[peers[j]]; prefer2 {
 				return false
 			}
 		}
@@ -67,11 +68,12 @@ func (p *peerRanking) Order(peers []string) {
 }
 
 // AddPeer adds a new peer to the ranking, starting out with the default score.
-func (p *peerRanking) AddPeer(peer string) {
+func (p *peerRanking) AddPeer(peer string, prefer bool) {
 	if _, ok := p.rank[peer]; ok {
 		return
 	}
 	p.rank[peer] = defaultScore
+	p.preferred[peer] = prefer
 }
 
 // Punish increases the score of the given peer.

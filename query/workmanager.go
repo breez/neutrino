@@ -58,7 +58,7 @@ type Worker interface {
 // that is used to determine which peers to prioritize querios on.
 type PeerRanking interface {
 	// AddPeer adds a peer to the ranking.
-	AddPeer(peer string)
+	AddPeer(peer string, prefer bool)
 
 	// Reward should be called when the peer has succeeded in a query,
 	// increasing the likelihood that it will be picked for subsequent
@@ -228,7 +228,7 @@ func (w *peerWorkManager) workDispatcher() {
 			onExit:    onExit,
 		}
 
-		w.cfg.Ranking.AddPeer(restPeer.Addr())
+		w.cfg.Ranking.AddPeer(restPeer.Addr(), true)
 
 		w.wg.Add(1)
 		go func() {
@@ -317,7 +317,7 @@ Loop:
 				onExit:    onExit,
 			}
 
-			w.cfg.Ranking.AddPeer(peer.Addr())
+			w.cfg.Ranking.AddPeer(peer.Addr(), false)
 
 			w.wg.Add(1)
 			go func() {

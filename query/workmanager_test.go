@@ -48,7 +48,7 @@ type mockPeerRanking struct {
 
 var _ PeerRanking = (*mockPeerRanking)(nil)
 
-func (p *mockPeerRanking) AddPeer(peer string) {
+func (p *mockPeerRanking) AddPeer(peer string, prefer bool) {
 }
 
 func (p *mockPeerRanking) Order(peers []string) {
