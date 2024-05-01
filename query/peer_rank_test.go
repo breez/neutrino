@@ -15,7 +15,7 @@ func TestPeerRank(t *testing.T) {
 	for i := 0; i < numPeers; i++ {
 		p := fmt.Sprintf("peer%d", i)
 		peers = append(peers, p)
-		ranking.AddPeer(p)
+		ranking.AddPeer(p, false)
 	}
 
 	// We'll try to order half of the peers.
