@@ -747,6 +747,7 @@ func NewChainService(cfg Config) (*ChainService, error) {
 		RestPeers:      cfg.RestPeers,
 		NewWorker:      query.NewWorker,
 		Ranking:        query.NewPeerRanking(),
+		RestRanking:    query.NewPeerRanking(),
 	})
 
 	var err error
