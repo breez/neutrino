@@ -62,7 +62,13 @@ func (w *restWorker) handleJob(job *queryJob, results chan<- *jobResult, quit <-
 
 	msgs, err := w.peer.Query(ctx, job.RestReq)
 	if err != nil {
-		if ctx.Err() != nil {
+		// If the deadline exceeded that means the timeout was hit.
+		if err == context.DeadlineExceeded {
+			err = ErrQueryTimeout
+		}
+
+		// If the context was canceled, that means the job was canceled.
+		if err == context.Canceled {
 			err = ErrJobCanceled
 		}
 	} else {
