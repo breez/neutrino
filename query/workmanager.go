@@ -11,7 +11,7 @@ const (
 	// minQueryTimeout is the timeout a query will be initially given. If
 	// the peer given the query fails to respond within the timeout, it
 	// will be given to the next peer with an increased timeout.
-	minQueryTimeout = 2 * time.Second
+	minQueryTimeout = 4 * time.Second
 
 	// maxQueryTimeout is the maximum timeout given to a single query.
 	maxQueryTimeout = 32 * time.Second
