@@ -9,7 +9,7 @@ import (
 const (
 	// defaultQueryTimeout specifies the default total time a query is
 	// allowed to be retried before it will fail.
-	defaultQueryTimeout = time.Second * 30
+	defaultQueryTimeout = time.Second * 40
 
 	// defaultQueryEncoding specifies the default encoding (witness or not)
 	// for `getdata` and other similar messages.
